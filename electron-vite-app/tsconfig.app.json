@@ -40,6 +40,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+      "module": "ESNext",           // ✅ 꼭 있어야 함
+    "target": "ESNext",           // ✅ 있으면 좋음
+    "jsx": "react-jsx"
   }
 }
