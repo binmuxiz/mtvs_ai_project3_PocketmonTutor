@@ -5,7 +5,7 @@ from comfy_launcher import launch_comfy_server
 from fastapi import FastAPI, HTTPException # HTTPException 추가
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import users, recommend
+from routes import users, pokemon
 
 import os
 from dotenv import load_dotenv
@@ -100,7 +100,6 @@ app.add_middleware(
 
 # 라우터 등록
 app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(recommend.router, prefix="/recommendations", tags=["Recommendations"])
 
 
 # DB 초기화

@@ -14,24 +14,28 @@ def init_db():
     # users 테이블 생성
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            user_id TEXT PRIMARY KEY,
-            name TEXT NOT NULL
-        );
-    """)
-
-    # recommendations 테이블 생성 (users.user_id를 외래키로 참조)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS recommendations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
             personality TEXT,
             hobby TEXT,
             color TEXT,
             mood TEXT,
-            type TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+            type TEXT
         );
     """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_pokemons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            name TEXT,
+            file_path TEXT,
+            description TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id)  ON DELETE CASCADE
+        );
+    """)
+
 
     conn.commit()
     conn.close()

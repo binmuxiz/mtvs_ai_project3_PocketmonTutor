@@ -2,10 +2,11 @@
 
 from fastapi import HTTPException, Request
 from langchain_openai import ChatOpenAI
-from models import RecommendationRequest
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage
 
+
+from models import RecommendationRequest
 
 async def generate_recommendation(data: RecommendationRequest, request: Request):
 

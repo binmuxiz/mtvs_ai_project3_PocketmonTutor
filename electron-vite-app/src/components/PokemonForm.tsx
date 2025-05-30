@@ -2,11 +2,14 @@
 
 
 import { useState } from 'react'
+
 const BASE_URL = import.meta.env.VITE_SERVER_API_URL
 
 
 // React에서는 하나의 컴포넌트 함수 안에서 모든 상태 관리(useState)와 로직(handleSubmit) 을 작성해야 하기 때문이야.
 function PokemonForm() {
+
+  console.log(BASE_URL)
   
   const [userId, setUserId] = useState("")
   const [name, setName] = useState("")
@@ -17,9 +20,6 @@ function PokemonForm() {
   const [type, setType] = useState('')
 
 
-
-
-
   const handleSubmit = async () => {
 
     console.log({ personality, hobby, color, mood, type })
@@ -27,10 +27,6 @@ function PokemonForm() {
     const userData = {
       user_id: userId,
       name,
-    }
-
-    const recommendationData = {
-      user_id: userId,
       personality,
       hobby,
       color,
@@ -38,7 +34,7 @@ function PokemonForm() {
       type,
     }
 
-    // 서버로 전송 
+// 서버로 전송 
     try {
       // 사용자 등록 
       const userRes = await fetch(`${BASE_URL}/users/`, {
@@ -47,38 +43,25 @@ function PokemonForm() {
           body: JSON.stringify(userData),
       })
 
+      const result = await userRes.json()
+
+      console.log("✅ ", result.message)
+      alert("🎉 사용자 정보가 등록록되었습니다!")
+
       if (userRes.status === 400) {
         console.warn("⚠️ 이미 등록된 사용자입니다.")
       } else if (!userRes.ok) {
         throw new Error("❌ 사용자 등록 실패")
       }
 
-      // 추천 정보 저장
-      const recRes = await fetch(`${BASE_URL}/recommendations/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(recommendationData),
-      })
 
-      if (!recRes.ok) throw new Error("❌ 추천 저장 실패")
 
-      const result = await recRes.json()
 
-      console.log("✅ 추천 저장 완료:", result.message)
-      alert("🎉 추천 정보가 저장되었습니다!")
-    
     } catch (err) {
     console.error("❌ 서버 통신 에러:", err)
     alert("서버와 연결 중 문제가 발생했어요.")
     }
   } 
-
-
-
-
-
-
-
 
 
 
@@ -116,8 +99,6 @@ function PokemonForm() {
 
       {/* 성격 유형 */}
       <div className="mb-4">
-    
-
         <label className="block text-sm font-medium text-gray-700 mb-1">성격 유형</label>
         <select
           className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
@@ -158,6 +139,7 @@ function PokemonForm() {
           ))}
         </div>
       </div>
+
 
       {/* 분위기 */}
       <div className="mb-4">
