@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+*.egg-info/
+
+# SQLite DB 파일 (버전관리 제외하고 싶다면)
+*.db
+
+# VSCode settings (optional)
+.vscode/
+
+# Logs
+*.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# dotenv / API key
+.env
