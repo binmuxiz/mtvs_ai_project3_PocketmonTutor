@@ -14,7 +14,7 @@ const api = {}
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld("electron", electronAPI);
-    contextBridge.exposeInMainWorld("api", api);
+    contextBridge.exposeInMainWorld("ㅉㅉapi", api);
   } catch (error) {
     console.error("Failed to expose Electron API in the renderer:", error);
     console.error(error);
