@@ -5,6 +5,27 @@ import { useState } from 'react'
 
 const BASE_URL = import.meta.env.VITE_SERVER_API_URL
 
+const types = [
+  { name: "노말", img: "/types/normal.png" },
+  { name: "불꽃", img: "/types/fire.png" },
+  { name: "물", img: "/types/water.png" },
+  { name: "풀", img: "/types/grass.png" },
+  { name: "전기", img: "/types/electricity.png" },
+  { name: "얼음", img: "/types/ice.png" },
+  { name: "격투", img: "/types/fight.png" },
+  { name: "독", img: "/types/poison.png" },
+  { name: "땅", img: "/types/ground.png" },
+  { name: "비행", img: "/types/flight.png" },
+  { name: "에스퍼", img: "/types/esper.png" },
+  { name: "벌레", img: "/types/worm.png" },
+  { name: "바위", img: "/types/rock.png" },
+  { name: "고스트", img: "/types/ghost.png" },
+  { name: "드래곤", img: "/types/dragon.png" },
+  { name: "악", img: "/types/evil.png" },
+  { name: "강철", img: "/types/steel.png" },
+  { name: "페어리", img: "/types/fairy.png" }
+];
+
 
 // React에서는 하나의 컴포넌트 함수 안에서 모든 상태 관리(useState)와 로직(handleSubmit) 을 작성해야 하기 때문이야.
 function PokemonForm() {
@@ -20,6 +41,7 @@ function PokemonForm() {
   const [type, setType] = useState('')
 
 
+
   const handleSubmit = async () => {
 
     console.log({ personality, hobby, color, mood, type })
@@ -33,6 +55,16 @@ function PokemonForm() {
       mood,
       type,
     }
+    
+    const recommendationData = {
+      user_id: userId,
+      personality,
+      hobby,
+      color,
+      mood,
+      type,
+    };
+
 
 // 서버로 전송 
     try {
@@ -45,26 +77,40 @@ function PokemonForm() {
 
       const result = await userRes.json()
 
-      console.log("✅ ", result.message)
-      alert("🎉 사용자 정보가 등록록되었습니다!")
-
+// 이건 not found아닌가 ?
       if (userRes.status === 400) {
         console.warn("⚠️ 이미 등록된 사용자입니다.")
+        alert("이미 등록된 사용자입니다.");
+        return;
+
       } else if (!userRes.ok) {
-        throw new Error("❌ 사용자 등록 실패")
+        throw new Error(result.detail || "❌ 사용자 등록 실패")
       }
 
 
 
 
+// 사용자 등록 성공 시 추천 정보 요청
+      const recRes = await fetch(`${BASE_URL}/recommend/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(recommendationData),
+      });
+
+      const recResult = await recRes.json();
+
+      if (!recRes.ok) {
+        throw new Error(recResult.detail || "❌ 추천 저장 실패");
+      }
+
+      console.log("✅ 추천 완료:", recResult.message);
+      alert("🎉 포켓몬 추천이 완료되었습니다!");
+
     } catch (err) {
-    console.error("❌ 서버 통신 에러:", err)
-    alert("서버와 연결 중 문제가 발생했어요.")
+      console.error("❌ 에러 발생:", err);
+      alert("서버 통신 중 문제가 발생했어요.");
     }
   } 
-
-
-
 
 
   // return JSX
@@ -97,21 +143,16 @@ function PokemonForm() {
       </div>
 
 
-      {/* 성격 유형 */}
+      {/* 성격 */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">성격 유형</label>
-        <select
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+        <input
+          type="text"
           value={personality}
           onChange={(e) => setPersonality(e.target.value)}
-        >
-          <option value="">선택해주세요</option>
-          <option value="extrovert">외향적</option>
-          <option value="introvert">내향적</option>
-          <option value="creative">창의적</option>
-          <option value="practical">실용적</option>
-          <option value="analytical">분석적</option>
-        </select>
+          placeholder="예: 창의적, 논리적, 활발함 등"
+          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+        />
       </div>
 
       {/* 취미 */}
@@ -126,52 +167,49 @@ function PokemonForm() {
         />
       </div>
 
-      {/* 색상 선택 */}
+      {/* 선호 색상 */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">선호하는 색상</label>
-        <div className="flex gap-2">
-          {["red", "blue", "green", "yellow", "purple"].map((c) => (
-            <button
-              key={c}
-              onClick={() => setColor(c)}
-              className={`w-8 h-8 rounded-full border-2 ${color === c ? 'border-gray-800' : 'border-transparent'} bg-${c}-500`}
-            />
-          ))}
-        </div>
+        <input
+          type="text"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          placeholder="예: 파란색, 노란색 등"
+          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+        />
       </div>
 
 
       {/* 분위기 */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">선호하는 분위기</label>
-        <div className="grid grid-cols-2 gap-2">
-          {["귀여운", "카리스마 있는", "강렬한", "신비로운"].map((m) => (
+        <input
+          type="text"
+          value={mood}
+          onChange={(e) => setMood(e.target.value)}
+          placeholder="예: 귀여운, 강렬한, 차분한 등"
+          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
+        />
+      </div>
+
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">선호하는 타입(속성)</label>
+        <div className="grid grid-cols-6 gap-2">
+          {types.map((t) => (
             <button
-              key={m}
-              onClick={() => setMood(m)}
-              className={`py-2 px-3 rounded-lg ${mood === m ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100'}`}
+              key={t.name}
+              onClick={() => setType(t.name)}
+              className={`flex flex-col items-center p-2 rounded border 
+                ${type === t.name ? 'bg-indigo-100 border-indigo-500' : 'bg-white border-gray-300'} 
+                hover:shadow`}
             >
-              {m}
+              <img src={t.img} alt={t.name} className="w-6 h-6 mb-1" />
+              <span className="text-xs">{t.name}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* 타입 */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">선호하는 타입(속성)</label>
-        <div className="grid grid-cols-3 gap-2">
-          {["불", "물", "풀", "전기", "에스퍼", "노말"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              className={`py-2 px-2 rounded-lg text-sm font-medium ${type === t ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100'}`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* 나의 포켓몬 찾기 */}
       <button
