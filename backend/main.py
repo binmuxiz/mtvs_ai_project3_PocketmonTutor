@@ -100,6 +100,7 @@ app.add_middleware(
 
 # 라우터 등록
 app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(pokemon.router, prefix="/recommend", tags=["Recommend"])
 
 
 # DB 초기화

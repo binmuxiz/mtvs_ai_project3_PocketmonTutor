@@ -15,7 +15,7 @@ def init_db():
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
+            user_id TEXT NOT NULL UNIQUE,
             name TEXT NOT NULL,
             personality TEXT,
             hobby TEXT,
@@ -28,11 +28,15 @@ def init_db():
     cur.execute("""
         CREATE TABLE IF NOT EXISTS user_pokemons (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
+            user_id TEXT NOT NULL, 
             name TEXT,
-            file_path TEXT,
+            no INTEGER,
+            pokemon_type TEXT,
             description TEXT,
-            FOREIGN KEY (user_id) REFERENCES users(id)  ON DELETE CASCADE
+            match_json TEXT,
+            image TEXT,
+            model_file_path TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
         );
     """)
 

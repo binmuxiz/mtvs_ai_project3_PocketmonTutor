@@ -13,8 +13,9 @@ router = APIRouter()
 
 @router.post("/")
 async def generate(data: UserCreate):
-
+    
     conn = get_connection()
+
     try:
         cur = conn.cursor()
 
@@ -44,8 +45,7 @@ async def generate(data: UserCreate):
     finally:
         conn.close()
 
-    # ✅ 저장 성공시에만 호출
-    # result = await generate_recommendation(data, request)
+    print("사용자 등록 완료 id = ", data.user_id)
 
     return {
         "message": "사용자 등록 완료!",
