@@ -16,12 +16,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL UNIQUE,
-            name TEXT NOT NULL,
-            personality TEXT,
-            hobby TEXT,
-            color TEXT,
-            mood TEXT,
-            type TEXT
+            name TEXT NOT NULL
         );
     """)
 

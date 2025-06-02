@@ -6,12 +6,12 @@ function createWindow(): void {
   // Create the browser window.
   const preloadPath = path.join(__dirname, "../preload/index.mjs");
   const mainWindow = new BrowserWindow({
-    width: 1280,
+    width: 800,
     height: 800,
-    resizable: false, // ✅ 창 크기 고정
-    fullscreenable: false,
-    maximizable: false,
-    
+    // resizable: True, // ✅ 창 크기 고정
+    // fullscreenable: True,
+    // maximizable: True,
+
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === "linux" ? {} : {}), //app-icon

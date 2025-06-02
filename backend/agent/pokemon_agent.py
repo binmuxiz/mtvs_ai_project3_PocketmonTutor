@@ -4,21 +4,12 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from models import RecommendationRequest
+from models import RecommendationRequest, PokemonRecommendation
 
 import json
 
 
 from pydantic import BaseModel
-from typing import List, Dict
-
-class PokemonRecommendation(BaseModel):
-    name: str
-    no: str
-    pokemon_type: List[str]
-    description: str
-    match: Dict[str, str]
-    image: str
 
 
 # class RecommendationList(BaseModel):

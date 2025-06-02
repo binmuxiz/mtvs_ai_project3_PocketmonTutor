@@ -9,6 +9,15 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+
+    # request.app.state ?
+    # FastAPI에서 request.app은 현재 실행중인 FastAPI 앱 인스턴스,
+    # .state는 애플리케이션 전체에서 공유되는 임시 저장 공간임
+    # loaded_tools는 main.py에서 저장했던 MCP에서 받아온 LangGraph 툴들의 리스트 
+    # tools = request.app.state.loaded_tools
+
+
 @router.post("/")
 async def recommend_pokemon(data: RecommendationRequest, request: Request):
     conn = get_connection()
@@ -35,11 +44,13 @@ async def recommend_pokemon(data: RecommendationRequest, request: Request):
             logger.info(f"result type: {type(result)}\n")
                     
             break
+        
         except ValueError as ve:
             logger.warning("ValueError 발생 - %d회차 시도 실패: %s", attempt, ve)
             if attempt == max_retries:
                 conn.close()
                 raise HTTPException(status_code=500, detail="추천 생성 중 오류가 반복되어 실패했습니다.")
+            
         except Exception as e:
             conn.close()
             logger.error("에이전트 실행 중 예외 발생: %s", e)

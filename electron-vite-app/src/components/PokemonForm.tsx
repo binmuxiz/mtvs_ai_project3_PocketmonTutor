@@ -28,36 +28,25 @@ const types = [
 
 
 // React에서는 하나의 컴포넌트 함수 안에서 모든 상태 관리(useState)와 로직(handleSubmit) 을 작성해야 하기 때문이야.
-function PokemonForm() {
+function PokemonForm( {user_id, onRecommend } ) {
 
-  console.log(BASE_URL)
-  
-  const [userId, setUserId] = useState("")
-  const [name, setName] = useState("")
   const [personality, setPersonality] = useState('')
   const [hobby, setHobby] = useState('')
   const [color, setColor] = useState('')
   const [mood, setMood] = useState('')
   const [type, setType] = useState('')
 
-
-
   const handleSubmit = async () => {
 
-    console.log({ personality, hobby, color, mood, type })
-
-    const userData = {
-      user_id: userId,
-      name,
-      personality,
-      hobby,
-      color,
-      mood,
-      type,
+    if (!user_id) {
+      alert("사용자 정보가 없습니다. 먼저 등록해주세요.");
+      return;
     }
-    
+
+    console.log({ user_id, personality, hobby, color, mood, type })
+
     const recommendationData = {
-      user_id: userId,
+      user_id: user_id,
       personality,
       hobby,
       color,
@@ -68,43 +57,26 @@ function PokemonForm() {
 
 // 서버로 전송 
     try {
-      // 사용자 등록 
-      const userRes = await fetch(`${BASE_URL}/users/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(userData),
-      })
-
-      const result = await userRes.json()
-
-// 이건 not found아닌가 ?
-      if (userRes.status === 400) {
-        console.warn("⚠️ 이미 등록된 사용자입니다.")
-        alert("이미 등록된 사용자입니다.");
-        return;
-
-      } else if (!userRes.ok) {
-        throw new Error(result.detail || "❌ 사용자 등록 실패")
-      }
-
-
-
 
 // 사용자 등록 성공 시 추천 정보 요청
-      const recRes = await fetch(`${BASE_URL}/recommend/`, {
+      const response = await fetch(`${BASE_URL}/recommend/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(recommendationData),
       });
 
-      const recResult = await recRes.json();
+      const recResult = await response.json();
+      console.log(recResult)
 
-      if (!recRes.ok) {
-        throw new Error(recResult.detail || "❌ 추천 저장 실패");
+      if (!response.ok) {
+        alert("❌ 추천 요청이 실패하였습니다.");
+        throw new Error(recResult.detail || "❌ 추천 실패");
       }
 
       console.log("✅ 추천 완료:", recResult.message);
       alert("🎉 포켓몬 추천이 완료되었습니다!");
+
+      onRecommend(recResult.recommendations);  // ✅ 추천 결과를 RecommendPage로 넘김
 
     } catch (err) {
       console.error("❌ 에러 발생:", err);
@@ -117,30 +89,6 @@ function PokemonForm() {
   return (
     <div className="bg-white rounded-xl p-6 w-full">
       <h2 className="text-xl font-bold text-gray-800 mb-4">나에게 맞는 포켓몬 찾기</h2>
-
-      {/* 사용자 ID */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">사용자 ID</label>
-        <input
-          type="text"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          placeholder="예: u001"
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
-        />
-      </div>
-
-      {/* 사용자 이름 */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="예: 홍길동"
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
-        />
-      </div>
 
 
       {/* 성격 */}
