@@ -3,7 +3,8 @@ uvicorn
 langchain
 langchain-core
 langchain-openai
+langchain-community
 langgraph
 langchain-mcp-adapters
 python-dotenv
-
+websocket-client
