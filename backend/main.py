@@ -5,7 +5,8 @@ from comfy_launcher import launch_comfy_server
 from fastapi import FastAPI, HTTPException # HTTPException 추가
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import users, pokemon
+
+from routes import users, pokemon, chatbot
 
 import os
 from dotenv import load_dotenv
@@ -88,6 +89,9 @@ async def lifespan(app: FastAPI):
         
     print('앱 종료 완료.')
 
+
+
+
 app = FastAPI(lifespan=lifespan)
 
 # CORS 설정
@@ -100,7 +104,8 @@ app.add_middleware(
 
 # 라우터 등록
 app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(pokemon.router, prefix="/recommend", tags=["Recommend"])
+app.include_router(pokemon.router, prefix="/pokemon", tags=["Pokemon"])
+app.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
 
 
 # DB 초기화
