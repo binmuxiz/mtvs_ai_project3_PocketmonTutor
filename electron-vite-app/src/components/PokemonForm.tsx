@@ -1,9 +1,6 @@
-// 왼쪽 입력폼 (성격, 취미, 색상, 분위기, 타입)
+import { useState } from 'react';
 
-
-import { useState } from 'react'
-
-const BASE_URL = import.meta.env.VITE_SERVER_API_URL
+const BASE_URL = import.meta.env.VITE_SERVER_API_URL;
 
 const types = [
   { name: "노말", img: "/types/normal.png" },
@@ -26,150 +23,119 @@ const types = [
   { name: "페어리", img: "/types/fairy.png" }
 ];
 
+function PokemonForm({ user_id, onRecommend }) {
+  const [personality, setPersonality] = useState('');
+  const [hobby, setHobby] = useState('');
+  const [color, setColor] = useState('');
+  const [mood, setMood] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-// React에서는 하나의 컴포넌트 함수 안에서 모든 상태 관리(useState)와 로직(handleSubmit) 을 작성해야 하기 때문이야.
-function PokemonForm( {user_id, onRecommend } ) {
+  const toggleType = (type: string) => {
+    setSelectedTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
 
-  const [personality, setPersonality] = useState('')
-  const [hobby, setHobby] = useState('')
-  const [color, setColor] = useState('')
-  const [mood, setMood] = useState('')
-  const [type, setType] = useState('')
-
-  const handleSubmit = async () => {
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!user_id) {
       alert("사용자 정보가 없습니다. 먼저 등록해주세요.");
       return;
     }
-
-    console.log({ user_id, personality, hobby, color, mood, type })
-
-    const recommendationData = {
-      user_id: user_id,
-      personality,
-      hobby,
-      color,
-      mood,
-      type,
-    };
-
-
-// 서버로 전송 
+    setIsLoading(true);
     try {
-
-// 사용자 등록 성공 시 추천 정보 요청
       const response = await fetch(`${BASE_URL}/recommend/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(recommendationData),
+        body: JSON.stringify({
+          user_id,
+          personality,
+          hobby,
+          color,
+          mood,
+          type: selectedTypes.join(", ")
+        })
       });
-
       const recResult = await response.json();
-      console.log(recResult)
-
       if (!response.ok) {
         alert("❌ 추천 요청이 실패하였습니다.");
         throw new Error(recResult.detail || "❌ 추천 실패");
       }
-
-      console.log("✅ 추천 완료:", recResult.message);
-      alert("🎉 포켓몬 추천이 완료되었습니다!");
-
-      onRecommend(recResult.recommendations);  // ✅ 추천 결과를 RecommendPage로 넘김
-
+      onRecommend(recResult.recommendations);
     } catch (err) {
       console.error("❌ 에러 발생:", err);
       alert("서버 통신 중 문제가 발생했어요.");
+    } finally {
+      setIsLoading(false);
     }
-  } 
+  };
 
-
-  // return JSX
-  return (
-    <div className="bg-white rounded-xl p-6 w-full">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">나에게 맞는 포켓몬 찾기</h2>
-
-
-      {/* 성격 */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">성격 유형</label>
-        <input
-          type="text"
-          value={personality}
-          onChange={(e) => setPersonality(e.target.value)}
-          placeholder="예: 창의적, 논리적, 활발함 등"
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
-        />
+return (
+  <div className="relative rounded-3xl shadow-xl bg-white overflow-hidden p-6 sm:p-8 transition-transform duration-300 hover:-translate-y-1 hover:shadow-2xl">
+    <div className="relative z-10">
+      <div className="text-center mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">나에게 맞는 포켓몬 찾기</h1>
+        <p className="text-sm text-gray-600">당신의 성격과 취향을 바탕으로 최적의 포켓몬 파트너를 찾아드립니다!</p>
       </div>
 
-      {/* 취미 */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">취미나 관심사</label>
-        <input
-          type="text"
-          value={hobby}
-          onChange={(e) => setHobby(e.target.value)}
-          placeholder="예: 스포츠, 음악 감상, 독서, 여행 등"
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
-        />
-      </div>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {[
+          { label: "성격유형", value: personality, set: setPersonality, placeholder: "예: ENFP, 활발한, 차분한..." },
+          { label: "취미나 관심사", value: hobby, set: setHobby, placeholder: "예: 독서, 게임, 요리..." },
+          { label: "선호하는 색상", value: color, set: setColor, placeholder: "예: 파란색, 보라색..." },
+          { label: "선호하는 분위기", value: mood, set: setMood, placeholder: "예: 귀여운, 활기찬..." }
+        ].map(({ label, value, set, placeholder }) => (
+          <div key={label}>
+            <label className="block text-base font-medium text-gray-700 mb-1">{label}</label>
+            <input
+              value={value}
+              onChange={(e) => set(e.target.value)}
+              placeholder={placeholder}
+              className="input-field w-full px-4 py-2 rounded-xl bg-gray-50 text-gray-800 outline-none text-sm"
+            />
+          </div>
+        ))}
 
-      {/* 선호 색상 */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">선호하는 색상</label>
-        <input
-          type="text"
-          value={color}
-          onChange={(e) => setColor(e.target.value)}
-          placeholder="예: 파란색, 노란색 등"
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
-        />
-      </div>
-
-
-      {/* 분위기 */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">선호하는 분위기</label>
-        <input
-          type="text"
-          value={mood}
-          onChange={(e) => setMood(e.target.value)}
-          placeholder="예: 귀여운, 강렬한, 차분한 등"
-          className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none"
-        />
-      </div>
-
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">선호하는 타입(속성)</label>
-        <div className="grid grid-cols-6 gap-2">
-          {types.map((t) => (
-            <button
-              key={t.name}
-              onClick={() => setType(t.name)}
-              className={`flex flex-col items-center p-2 rounded border 
-                ${type === t.name ? 'bg-indigo-100 border-indigo-500' : 'bg-white border-gray-300'} 
-                hover:shadow`}
-            >
-              <img src={t.img} alt={t.name} className="w-6 h-6 mb-1" />
-              <span className="text-xs">{t.name}</span>
-            </button>
-          ))}
+        <div>
+          <label className="block text-base font-medium text-gray-700 mb-2">선호하는 타입 (여러 개 선택 가능)</label>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {types.map((t) => (
+              
+              <button
+                key={t.name}
+                type="button"
+                onClick={() => toggleType(t.name)}
+                className={`type-btn py-1.5 px-2 rounded-lg font-medium flex flex-col items-center justify-center text-xs transition-all
+                  ${
+                    selectedTypes.includes(t.name)
+                      ? "bg-indigo-100 ring-2 ring-indigo-400 text-indigo-700 shadow-md scale-95"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+              >
+                <img src={t.img} alt={t.name} className="w-4 h-4 mb-0.5" />
+                <span>{t.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
+        <div className="text-center pt-3">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="bg-gradient-to-r from-[#ff6b6b] to-[#ff8e8e] text-white font-bold text-base px-6 py-3 rounded-full shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-60"
+          >
+            {isLoading ? "추천 중..." : "나의 포켓몬 찾기"}
+          </button>
+        </div>
 
-      {/* 나의 포켓몬 찾기 */}
-      <button
-        onClick={handleSubmit}
-        className="w-full py-3 px-6 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
-      >
-        나의 포켓몬 찾기
-      </button>
+        
+      </form>
     </div>
-  )
+  </div>
+);
+
 }
 
-export default PokemonForm
-
-
+export default PokemonForm;

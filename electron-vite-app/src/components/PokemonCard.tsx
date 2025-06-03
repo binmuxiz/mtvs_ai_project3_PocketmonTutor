@@ -4,6 +4,7 @@ import { PokemonData } from '../types/PokemonData'; // 혹은 경로에 맞게
 interface Props {
   data: PokemonData;
   onConfirm: () => void;
+  onClose: () => void;
 }
 
 const typeColors: Record<string, string> = {
@@ -28,9 +29,20 @@ const typeColors: Record<string, string> = {
 };
 
 
-function PokemonCard({ data, onConfirm }: Props) {
+function PokemonCard({ data, onConfirm, onClose }: Props) {
   return (
     <div className="card-container">
+
+            
+      {/* ❌ X 버튼 */}
+      <button
+        onClick={onClose}
+        className="absolute top-2 right-2 text-xl text-gray-400 hover:text-black"
+      >
+        ×
+      </button>
+
+
       <div className="card max-w-xl mx-auto rounded-xl overflow-hidden shadow-lg bg-white transition-transform duration-500">
 
         {/* 카드 헤더: 이름 + 번호 */}
