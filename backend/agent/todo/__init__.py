@@ -7,7 +7,7 @@ from .toolkit import TodoToolkit
 from .tools import AddTodoTool, ViewTodoTool, CompleteTodoTool, RemoveTodoTool
 
 __all__ = [
-    "TodoDBToolkit",
+    "TodoToolkit",
     "AddTodoTool",
     "ViewTodoTool",
     "CompleteTodoTool",

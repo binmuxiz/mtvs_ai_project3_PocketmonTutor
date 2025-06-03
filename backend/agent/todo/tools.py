@@ -7,23 +7,24 @@ from typing import Type
 DB_PATH = "todo.db"
 
 class AddTodoInput(BaseModel):
+    user_id: str = Field(description="사용자 ID")
     title: str = Field(description="추가할 할 일 제목")
 
-class AddTodoTool(BaseModel):
+class AddTodoTool(BaseTool):
     name: str = "add_todo"
     description: str = "할 일을 db에 추가합니다."
     args_schema: Type[BaseModel] = AddTodoInput
 
-    def _run(self, title:str) -> str:
+    def _run(self, user_id, title:str) -> str:
         conn = sqlite3.connect("todos.db")
         cur = conn.cursor()
-        cur.execute("INSERT INTO todos (title) VALUES (?)", (title,))
+        cur.execute("INSERT INTO todos (user_id, title) VALUES (?, ?)", (user_id, title))
         conn.commit()
         conn.close()
-        return f"✅ '{title}' 할 일이 추가되었습니다."
+        return f"✅ '{title}' 할 일이 사용자 {user_id}에게 추가되었습니다."
     
-    async def _arun(self, title: str) -> str:
-        return self._run(title)
+    async def _arun(self, user_id, title: str) -> str:
+        return self._run(user_id, title)
     
 
 
