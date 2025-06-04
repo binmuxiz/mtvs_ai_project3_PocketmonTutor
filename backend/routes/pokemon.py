@@ -1,19 +1,11 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-import websocket
 
-from models import RecommendationRequest
+from models import PokemonRequest
 from agent.pokemon_agent import generate_recommendation
-from db import get_connection
 
-import uuid
-import json
-import os
-import glob
+from db import get_user_by_id, create_pokemon
 
-from urllib import request as urllib_request
-from urllib import parse as urllib_parse
 
 import logging
 # ===================================
@@ -27,15 +19,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-
 router = APIRouter()
 
 
-from db import get_user_by_id, create_pokemon
 
 # ============================ 포켓몬 추천 API ========================================================
 @router.post("/recommend")
-async def recommend_pokemon(data: RecommendationRequest, request: Request):
+async def recommend_pokemon(data: PokemonRequest, request: Request):
     user_id = data.user_id
 
 # 사용자 존재 확인
@@ -68,14 +58,14 @@ async def recommend_pokemon(data: RecommendationRequest, request: Request):
             logger.error("에이전트 실행 중 예외 발생: %s", e)
             raise HTTPException(status_code=500, detail=f"추천 실패: {e}")
 
-    try:
-# DB에 저장
-        logger.info("DB 저장 대상 포켓몬: name=%s, no=%s", result.name, result.no)
-        create_pokemon(user_id, result)
+#     try:
+# # DB에 저장
+#         logger.info("DB 저장 대상 포켓몬: name=%s, no=%s", result.name, result.no)
+#         create_pokemon(user_id, result)
 
-    except Exception as e:
-        logger.error("DB 저장 중 오류 발생: %s", e)
-        raise
+#     except Exception as e:
+#         logger.error("DB 저장 중 오류 발생: %s", e)
+#         raise
 
     return { "message": "포켓몬 추천 결과 저장 완료!",  "recommendations": result}    
     
@@ -84,17 +74,17 @@ async def recommend_pokemon(data: RecommendationRequest, request: Request):
 import httpx
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 
 
-# --- 요청 모델 정의 ---
-class PromptRequest(BaseModel):
-    prompt: str  # 사용자가 입력한 이미지 URL
-    user_id: str
+from models import PokemonModelRequest
+from db import create_pokemon
+from models import Pokemon
 
 # --- GLB 생성 및 반환 API ---
 @router.post("/glb")
-async def generate_glb(request: PromptRequest):
+async def generate_glb(request: PokemonModelRequest):
+
+# glb 파일 요청
     server_address = "192.168.0.89:8000"
     target_url = f"http://{server_address}/generate-glb"
 
@@ -102,11 +92,45 @@ async def generate_glb(request: PromptRequest):
         async with httpx.AsyncClient(timeout=300.0) as client:
             response = await client.post(target_url, json={"prompt": request.prompt})
 
-        # 원격 서버의 응답을 그대로 리턴
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail=f"GLB 생성 실패: {response.text}")
+    
+        resp_json = response.json()
+
+        model_url = resp_json.get('url')
+        
+        if not model_url:
+            raise HTTPException(status_code=500, detail="응답에 url이 없습니다.")
+        
+# db에 저장하기 위한 구조체 
+        pokemon = Pokemon(
+            user_id=request.user_id,
+            name=request.name,
+            no=request.no,
+            pokemon_type=request.pokemon_type,
+            description=request.description,
+            match=request.match,
+            image=request.image,
+            model_file_path=model_url
+        )
+
+# db에 저장
+        try:
+            create_pokemon(pokemon=pokemon)
+        except Exception as e:
+            logger.error("DB 저장 실패: %s", e)
+            raise HTTPException(status_code=500, detail="포켓몬 DB 저장 실패")
+        
+
+# 원격 서버의 응답을 그대로 리턴
         return JSONResponse(
             status_code=response.status_code,
-            content=response.json()
+            content=resp_json
         )
+# {
+#   "status": "success",
+#   "url": "http://192.168.0.89:8000/output/3D/Hy3D_textured_00031__animated.glb"
+# }
 
     except httpx.RequestError as e:
         return JSONResponse(
@@ -117,4 +141,3 @@ async def generate_glb(request: PromptRequest):
             }
         )
 
-    

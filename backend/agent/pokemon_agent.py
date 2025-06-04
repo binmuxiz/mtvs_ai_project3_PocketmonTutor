@@ -9,13 +9,6 @@ from models import RecommendationRequest, PokemonRecommendation
 import json
 
 
-from pydantic import BaseModel
-
-
-# class RecommendationList(BaseModel):
-#     recommendations: List[PokemonRecommendation]
-
-
 async def generate_recommendation(data: RecommendationRequest, request: Request):
 
        # 템플릿 프롬프트에 값 삽입
@@ -133,14 +126,6 @@ async def generate_recommendation(data: RecommendationRequest, request: Request)
             recommeded = PokemonRecommendation(**parsed_data)
         except Exception as parse_err:
             raise ValueError(f'JSON 파싱 실패: {parse_err}')
-                    
-        # print(recommeded.name)
-        # print(recommeded.no)
-        # print(recommeded.pokemon_type)
-        # print(recommeded.description)
-        # print(recommeded.match['personality'])
-        # print(recommeded.match['type'])
-        # print(recommeded.image)
 
         return recommeded
 
