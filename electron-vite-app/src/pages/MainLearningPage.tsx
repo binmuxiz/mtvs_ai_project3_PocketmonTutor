@@ -107,6 +107,14 @@ export default function MainLearningPage({ user_id }) {
   }
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
+  
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
+
 
   const sendMessage = async () => {
     if (!userInput.trim()) return;
@@ -212,6 +220,8 @@ export default function MainLearningPage({ user_id }) {
           </div>
         </div>
 
+
+
         {/* 오른쪽 - 말풍선 영역 */}
         <div className="w-2/5 p-4">
           <div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-250px)] pr-2 scroll-smooth">
@@ -235,6 +245,7 @@ export default function MainLearningPage({ user_id }) {
                 </div>
               </div>
             ))}
+          <div ref={chatEndRef} />
           </div>
         </div>
 
@@ -284,6 +295,7 @@ export default function MainLearningPage({ user_id }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>
+
           </div>
         </div>
       </footer>
