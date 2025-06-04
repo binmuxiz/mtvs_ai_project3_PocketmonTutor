@@ -2,6 +2,7 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 from typing import Type
 
+
 import json
 
 
@@ -43,6 +44,8 @@ class ViewTodoTool(BaseTool):
         return self._run()
 
 
+
+
 # ✅ Complete Todo
 class CompleteTodoInput(BaseModel):
     todo_id: int = Field(description="완료할 할 일의 ID")
@@ -60,6 +63,8 @@ class CompleteTodoTool(BaseTool):
 
     async def _arun(self, todo_id: int) -> str:
         return self._run(todo_id)
+
+
 
 
 # ✅ Remove Todo

@@ -11,7 +11,7 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from functools import lru_cache
 
-from db import add_todo
+from db import add_todo, view_todos, complete_todo, remove_todo, get_todos_by_user_id
 from db import save_chat
 
 import json
@@ -26,7 +26,7 @@ from langchain_openai import ChatOpenAI
 import traceback
 
 
-async def generate_life_problem(scenario: str) -> str:
+async def generate_eng_problem(scenario: str) -> str:
     llm = ChatOpenAI(model='gpt-4o', temperature=0)
 
     print(f"LifeScenarioProblemGenerator 호출됨! 시나리오: {scenario}")  # 로그 추가
@@ -70,10 +70,10 @@ async def generate_life_problem(scenario: str) -> str:
 
 
 
-life_problem_tool = Tool(
-    name="LifeScenarioProblemGenerator",
-    func=generate_life_problem,
-    coroutine=generate_life_problem,
+eng_problem_tool = Tool(
+    name="EngProblemTool",
+    func=generate_eng_problem,
+    coroutine=generate_eng_problem,
     description="일상 생활에 기반해 고등학교 영어 내신 문제를 생성하고 정답과 해설을 제공합니다."
 )
 
@@ -86,7 +86,7 @@ def get_agent_executor():
     todo_toolkit = TodoToolkit()
     todo_tools = todo_toolkit.get_tools()
 
-    tools_for_agent = todo_tools + [life_problem_tool]
+    tools_for_agent = todo_tools + [eng_problem_tool]
 
     prompt = ChatPromptTemplate.from_messages([
         ('system', """
@@ -185,56 +185,92 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
     if result.get("output"):
         save_chat(user_id=user_id, sender='ai', message=result['output'])
 
-
-# ✅ 중간단계 결과 확인해서 Tool 사용여부 확인
-#     intermediate_steps = result.get('intermediate_steps', [])
-
-#     for step in intermediate_steps:
-#         action, tool_output = step
-#         # print(action.tool)  # "add_todo"
-#         # print(action.tool_input)  # {'title': '오늘 수학문제 10문제 풀기'}
-#         # print(tool_output)  # '{"action": "add_todo", "title": "오늘 수학문제 10문제 풀기"}'
-
-#         try:
-#             parsed = json.loads(tool_output)
-#             if isinstance(parsed, dict) and parsed.get("action") == "add_todo":
-#                 title = parsed.get("title")
-#                 add_todo(user_id=user_id, title=title)
-#                 return f"✅ '{title}' 할 일을 저장했어요!"
-#         except json.JSONDecodeError:
-#             continue  # 툴이 JSON 반환을 안 했으면 무시
-
-#     return result['output']
-
-
+# ✅ tools 사용 확인 
     intermediate_steps = result.get('intermediate_steps', [])
 
     for step in intermediate_steps:
         action, tool_output = step
         tool_name = action.tool
 
+        try:
+            parsed = json.loads(tool_output)
+        except json.JSONDecodeError:
+            continue  # 잘못된 JSON이면 무시
+
         if tool_name == "add_todo":
-            try:
-                parsed = json.loads(tool_output)
-                if isinstance(parsed, dict):
-                    title = parsed.get("title")
-                    add_todo(user_id=user_id, title=title)
-                    return f"✅ '{title}' 할 일을 저장했어요!"
-            except json.JSONDecodeError:
-                continue  # 잘못된 JSON이면 무시
+            print("----------------------- add todo ------------------------------")
+            title = parsed.get("title")
+            if title:
+                add_todo(user_id=user_id, title=title)
+                return f"✅ '{title}' 할 일을 저장했어요!"
 
-        elif tool_name == "LifeScenarioProblemGenerator":
-            return tool_output  # 자연어 문제 문자열 그대로 반환
+        elif tool_name == "view_todos":
+            print("----------------------- view todos ------------------------------")
+            return view_todos(user_id=user_id)
 
-    # 툴이 없거나 일반 대화라면
-    return result['output']
+        elif tool_name == "complete_todo":
+            print("----------------------- complete todo ------------------------------")
+            title = parsed.get("title")
+            todo_id = parsed.get("todo_id")
+            print("1. todo id => ",{todo_id})
+
+            todo_id = await get_todo_id(user_id=user_id, title=title)
+            print("2. todo id => ",{todo_id})
+
+            if todo_id:
+                complete_todo(user_id=user_id, todo_id=todo_id)
+                return f"🎉 ID {todo_id}번 할 일을 완료했어요!"
+            else:
+                return "❌ 해당 할 일을 찾을 수 없어요."
+            
+
+        elif tool_name == "remove_todo":
+            print("----------------------- remove todo ------------------------------")
+            title = parsed.get("title")
+            todo_id = parsed.get("todo_id")
+            print("1. todo id => ",{todo_id})
+
+            remove_todo(user_id=user_id, todo_id=todo_id)
+            print("2. todo id => ",{todo_id})
+
+            if todo_id:
+                complete_todo(user_id=user_id, todo_id=todo_id)
+                return f"🗑️ ID {todo_id}번 할 일을 삭제했어요!"
+            else:
+                return "❌ 해당 할 일을 찾을 수 없어요."
+            
+
+        elif tool_name == "EngProblemTool":
+            print("----------------------- EngProblemTool ------------------------------")
+            return tool_output  # 문제 생성 툴은 그대로 자연어 반환
+        
+        else:
+            print("----------------------- 일반 채팅 ------------------------------")
+            return tool_output
 
 
 
+async def get_todo_id(user_id, title) -> str:
+    todos = get_todos_by_user_id(user_id=user_id)
+
+    todo_json = json.dumps(todos, ensure_ascii=False, indent=2)
 
 
+    llm_prompt = f"""
+        아래는 사용자의 할 일 목록입니다.
 
+        {todo_json}
 
+        사용자의 할일: "{title}"
 
+        위 목록 중 어떤 항목에 해당하는 것인지 추론하여, 가장 적절한 todo의 ID를 숫자 하나로 반환하세요.
 
+        형식: 숫자(ID)만 단독으로 출력
+    """
 
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    todo_id_result = await llm.ainvoke(llm_prompt)
+
+    todo_id = todo_id_result.content.strip()
+    
+    return todo_id
