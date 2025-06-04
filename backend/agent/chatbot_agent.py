@@ -29,7 +29,7 @@ import traceback
 async def generate_eng_problem(scenario: str) -> str:
     llm = ChatOpenAI(model='gpt-4o', temperature=0)
 
-    print(f"LifeScenarioProblemGenerator 호출됨! 시나리오: {scenario}")  # 로그 추가
+    print(f"Eng Problem 호출됨! 시나리오: {scenario}")  # 로그 추가
     try:
         print(f"📨 입력된 시나리오: {scenario}")
         prompt = PromptTemplate(
@@ -95,20 +95,23 @@ def get_agent_executor():
         너의 역할은 다음과 같아:
                 
         1. 사용자의 할 일 관리 요청이 오면, 툴을 사용해서 처리해. (add/view/complete/remove)
-        2. 문제가 필요하다는 요청이 오면, 직접 문제를 생성해서 자연어로 출력해.
+        2. 영어 문제 생성을 요청받으면, 반드시 "EngProblemTool" 툴을 사용해 문제를 생성해.
         3. 그 외 일상 대화는 자연스럽게 응답해.
         
          **중요**:
-         - 툴을 사용할 땐 JSON으로 명확하게 결과를 반환해야 해. 예: {{"action": "add_todo", "title": "수학 10문제 풀기"}}
+         - 툴을 사용할 땐 JSON으로 명확하게 결과를 반환해야 해. 예: 
+         {{"action": "add_todo", "title": "수학 10문제 풀기"}}
+         {{"action": "EngProblemTool", "title": "친구와 길을 잃은 상황"}}
          - 툴 사용이 아닌 경우엔 자연스럽게 텍스트로 응답하면 돼.
          - 사용자가 명확히 툴과 관련된 요청을 하지 않으면, 툴을 실행하지 마.
 
          예시:
         - "오늘 뭐할까?" → 자연어 응답
         - "할 일 목록 보여줘" → {{"action": "view_todos"}}
-        - "수학 문제 하나 만들어줘" → 자연어 문제 생성
+        - "오늘 할거 때려치고 노래방이나 갈끼" → {{"action": "view_todos"}}
+            - 이런 경우엔 오늘의 할일 목록을 확인하고 적절한 대답 생성. 예: "오늘 아래와 같은 할일들이 존재해요. 노래방은 할일을 다 하고 갑시다!"
          
-        툴은 오직 JSON 응답만 반환하고, 그 외엔 자연어로 대화해.
+
         """),
         ('placeholder', '{chat_history}'),
         ('user', '{input}'),
@@ -179,7 +182,7 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
     # result = agent_with_history.invoke({'input': input_text}, config=config)
     result = await agent_with_history.ainvoke({'input': input_text}, config=config)
 
-    print(result)
+    # print(result)
     
 # ✅ AI 응답 저장
     if result.get("output"):
@@ -188,9 +191,15 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
 # ✅ tools 사용 확인 
     intermediate_steps = result.get('intermediate_steps', [])
 
+    output_message = result['output']
+
     for step in intermediate_steps:
         action, tool_output = step
         tool_name = action.tool
+
+        if tool_name == "EngProblemTool":
+            print("----------------------- EngProblemTool ------------------------------")
+            return tool_output 
 
         try:
             parsed = json.loads(tool_output)
@@ -202,7 +211,7 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
             title = parsed.get("title")
             if title:
                 add_todo(user_id=user_id, title=title)
-                return f"✅ '{title}' 할 일을 저장했어요!"
+                return output_message
 
         elif tool_name == "view_todos":
             print("----------------------- view todos ------------------------------")
@@ -219,7 +228,7 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
 
             if todo_id:
                 complete_todo(user_id=user_id, todo_id=todo_id)
-                return f"🎉 ID {todo_id}번 할 일을 완료했어요!"
+                return f"🎉 {output_message}"
             else:
                 return "❌ 해당 할 일을 찾을 수 없어요."
             
@@ -230,24 +239,17 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
             todo_id = parsed.get("todo_id")
             print("1. todo id => ",{todo_id})
 
-            remove_todo(user_id=user_id, todo_id=todo_id)
+            todo_id = await get_todo_id(user_id=user_id, title=title)
             print("2. todo id => ",{todo_id})
 
             if todo_id:
-                complete_todo(user_id=user_id, todo_id=todo_id)
-                return f"🗑️ ID {todo_id}번 할 일을 삭제했어요!"
+                remove_todo(user_id=user_id, todo_id=todo_id)
+                return f"🗑️ {output_message}"
             else:
                 return "❌ 해당 할 일을 찾을 수 없어요."
-            
-
-        elif tool_name == "EngProblemTool":
-            print("----------------------- EngProblemTool ------------------------------")
-            return tool_output  # 문제 생성 툴은 그대로 자연어 반환
-        
-        else:
-            print("----------------------- 일반 채팅 ------------------------------")
-            return tool_output
-
+    
+    print("----------------------- 일반 채팅 ------------------------------")
+    return output_message
 
 
 async def get_todo_id(user_id, title) -> str:

@@ -37,8 +37,8 @@ def view_todos(user_id: str) -> str:
 
         result = ""
         for row in rows:
-            check = "✅" if row[2] else "☐"
-            result += f"{row[0]}. {check} {row[1]}\n"
+            check = "✅" if row[1] else "☐"
+            result += f"{check} {row[0]}\n"
         return result.strip()
     
     except Exception as e:
