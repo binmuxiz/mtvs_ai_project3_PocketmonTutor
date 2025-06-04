@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse, FileResponse
 from PIL import Image
+import subprocess  # 🔧 A: subprocess 추가
 
 app = FastAPI()
 
@@ -65,10 +66,8 @@ def get_images(ws, prompt):
 
     return output_images
 
-
-# 🔧 B: Blender 애니메이션 적용 함수 추가
 def apply_bounce_with_blender(input_path: str, output_path: str):
-    blender_exe = r"C:\Program Files\Blender Foundation\Blender 3.6\blender.exe"
+    blender_exe = r"C:\Program Files\Blender Foundation\Blender 4.4\blender.exe"
     script_path = r"C:\mtvs_ai_project3_PocketmonTutor\backend\routes\animation.py"
 
     result = subprocess.run([
@@ -88,7 +87,7 @@ def apply_bounce_with_blender(input_path: str, output_path: str):
             output=result.stdout,
             stderr=result.stderr
         )
-    
+
 
 # --- 요청 모델 정의 ---
 class PromptRequest(BaseModel):
@@ -160,32 +159,37 @@ async def generate_glb(request: PromptRequest):
         reverse=True
     )
 
-    if glb_files:
-        # latest_path = glb_files[0]
-        # print(f"✅ 반환할 GLB 파일 경로: {latest_path}")
-        # return FileResponse(
-        #     path=latest_path,
-        #     media_type="application/octet-stream",
-        #     filename=os.path.basename(latest_path)
-        # )
-# 변경: URL을 반환하도록
-        latest_filename = os.path.basename(glb_files[0])
-        print(f"✅ 반환할 GLB 파일: {latest_filename}")
 
-        # Comfy 서버가 파일을 정적으로 제공한다고 가정
-        glb_url = f"http://{server_address}/output/3D/{latest_filename}"
+
+    if glb_files:
+        latest_path = glb_files[0]
+        latest_filename = os.path.basename(latest_path)
+        print(f"✅ ComfyUI 생성된 GLB 파일: {latest_filename}")
+
+        # 🔧 Blender 애니메이션 적용
+        animated_output_path = latest_path.replace(".glb", "_animated.glb")
+        try:
+            apply_bounce_with_blender(latest_path, animated_output_path)
+        except subprocess.CalledProcessError as e:
+            return JSONResponse(content={
+                "status": "fail",
+                "message": f"Blender 애니메이션 적용 실패: {e.stderr}"
+            }, status_code=500)
+
+        # 최종 애니메이션 적용된 GLB 파일 반환
+        final_filename = os.path.basename(animated_output_path)
+        print(f"🎉 최종 애니메이션 GLB 파일: {final_filename}")
+
+        # Comfy 서버에서 정적 파일을 서비스한다고 가정
+        glb_url = f"http://{server_address}/output/3D/{final_filename}"
 
         return JSONResponse(content={
             "status": "success",
             "url": glb_url
         })
 
-
     else:
         return JSONResponse(content={
             "status": "fail",
             "message": "GLB 파일이 생성되지 않았습니다."
         }, status_code=500)
-
-
-import subprocess  # 🔧 A: subprocess 추가A
