@@ -14,91 +14,79 @@ from functools import lru_cache
 from db import add_todo
 from db import save_chat
 
-session_store = {}
-
 import json
 
-# 메시지 히스토리와 함께 실행하는 래퍼 함수
-def invoke_agent(input_text: str, session_id: str, user_id: str):
-
-    save_chat(user_id=user_id, sender='user', message=input_text)
-
-    agent_executor = get_agent_executor()
+# 문제 생성 ==================================================================
 
 
-    def get_session_history(sid):
-        if sid not in session_store:
-            session_store[sid] = ChatMessageHistory()
-        return session_store[sid]
+
+from langchain.agents import Tool
+from langchain.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+import traceback
 
 
-    agent_with_history = RunnableWithMessageHistory(
-        agent_executor,
-        get_session_history,
-        input_messages_key='input',
-        history_messages_key='chat_history'
-    )
+async def generate_life_problem(scenario: str) -> str:
+    llm = ChatOpenAI(model='gpt-4o', temperature=0)
 
-    config = {
-        'configurable': {
-            'session_id': session_id,
-        },
-    }
-    
-    result = agent_with_history.invoke({'input': input_text}, config=config)
-    # print(result)
-
-    intermediate_steps = result.get('intermediate_steps', [])
-
-        
-    for step in intermediate_steps:
-        action, tool_output = step
-        # print(action.tool)  # "add_todo"
-        # print(action.tool_input)  # {'title': '오늘 수학문제 10문제 풀기'}
-        # print(tool_output)  # '{"action": "add_todo", "title": "오늘 수학문제 10문제 풀기"}'
-
-        try:
-            parsed = json.loads(tool_output)
-            if isinstance(parsed, dict) and parsed.get("action") == "add_todo":
-                title = parsed.get("title")
-                add_todo(user_id=user_id, title=title)
-                return f"✅ '{title}' 할 일을 저장했어요!"
-        except json.JSONDecodeError:
-            continue  # 툴이 JSON 반환을 안 했으면 무시
-
-    return result['output']
-
-    # output = result['output']
-
-    # ✅ AI 응답 저장
-    save_chat(user_id=user_id, sender='ai', message=output)
-
-    # 문자열을 JSON으로 파싱
+    print(f"LifeScenarioProblemGenerator 호출됨! 시나리오: {scenario}")  # 로그 추가
     try:
-        parsed = json.loads(output)
+        print(f"📨 입력된 시나리오: {scenario}")
+        prompt = PromptTemplate(
+            input_variables=["scenario"],
+            template="""
+            너는 고등학교 영어 내신 문제 전문가야. 주어진 상황은 일상 생활에서 일어난다고 가정해.
+            그 상황에 맞는 대한민국 고등학교 영어 내신 문제를 하나 만들어줘. 문제는 다음 기준을 따라야 해:
 
-        if isinstance(parsed, dict) and 'action' in parsed:
-            # 툴 결과 처리
-            if parsed.get("action") == "add_todo":
-                title = parsed.get("title")
-                add_todo(user_id=user_id, title=title)
-                return f"✅ '{title}' 할 일을 저장했어요!"
-        
-        else:   # 일반 답변 / 문제 생성
-            return output
-        
-    except json.JSONDecodeError:
-        return f"JSONDecodeError ==> {output}"   # 일반 자연어 응답
+            - 2025년 현재, 대한민국 고등학교 영어 수준을 기반으로 해야 함.
+            - 고등학생이 겪을 수 있을 일상 등 다양한 주제를 다룰 수 있음.
+            - 정답과 해설을 반드시 포함할 것. 해설은 50단어 이내로 간결하게 작성해줘.
+
+            다음 형식을 따라줘:
+            문제: ...
+            보기:
+            A) ...
+            B) ...
+            C) ...
+            D) ...
+            정답: (예: B)
+            해설: (이유 설명)
+
+            상황:
+            {scenario}
+
+            출제된 영어 문제:
+            """
+        )
+        formatted_prompt = prompt.format(scenario=scenario)
+        result = await llm.ainvoke(formatted_prompt)
+        print("📤 문제 생성 완료")
+        return result.content
+    
+    except Exception as e:
+        error_message = traceback.format_exc()
+        print(f"❌ generate_life_problem 에러 발생: {e}\n{error_message}")  # 에러 메시지 로그
+        return "문제 생성 중 예기치 못한 오류가 발생했습니다. 나중에 다시 시도해주세요."
 
 
 
-# @lru_cache()    # 파라미터가 동일한 함수 호출 결과를 캐시해서 두 번째 호출부터는 같은 객체를 반환해준다. 
+life_problem_tool = Tool(
+    name="LifeScenarioProblemGenerator",
+    func=generate_life_problem,
+    coroutine=generate_life_problem,
+    description="일상 생활에 기반해 고등학교 영어 내신 문제를 생성하고 정답과 해설을 제공합니다."
+)
+
+
+@lru_cache()    # 파라미터가 동일한 함수 호출 결과를 캐시해서 두 번째 호출부터는 같은 객체를 반환해준다. 
 def get_agent_executor():
     llm = ChatOpenAI(model='gpt-4o', temperature=0)
 
 # 툴 추가
     todo_toolkit = TodoToolkit()
-    tools = todo_toolkit.get_tools()
+    todo_tools = todo_toolkit.get_tools()
+
+    tools_for_agent = todo_tools + [life_problem_tool]
 
     prompt = ChatPromptTemplate.from_messages([
         ('system', """
@@ -127,10 +115,125 @@ def get_agent_executor():
         ('placeholder', '{agent_scratchpad}')
     ])
 
-    agent = create_tool_calling_agent(llm, tools, prompt)
-    executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True)
+    agent = create_tool_calling_agent(llm, tools_for_agent, prompt)
+    executor = AgentExecutor(
+        agent=agent, 
+        tools=tools_for_agent, 
+        verbose=True, 
+        return_intermediate_steps=True
+        )
 
     return executor
+
+
+from langchain_community.chat_message_histories import ChatMessageHistory
+from db import load_chat_history, get_all_user_ids
+
+
+session_store = {}
+
+def initialize_session_store():
+    user_ids = get_all_user_ids()  
+    session_ids = user_ids
+
+    for sid in session_ids:
+        messages = load_chat_history(sid)  # DB에서 해당 세션의 채팅 로그 불러오기
+        history = ChatMessageHistory()
+        for msg in messages:
+            if msg['sender'] == 'user':
+                history.add_user_message(msg['message'])
+            elif msg['sender'] == 'ai':
+                history.add_ai_message(msg['message'])
+        session_store[sid] = history
+
+
+
+
+# 메시지 히스토리와 함께 실행하는 래퍼 함수
+async def invoke_agent(input_text: str, session_id: str, user_id: str):
+
+# ✅ USER Message 저장
+    save_chat(user_id=user_id, sender='user', message=input_text)
+
+    agent_executor = get_agent_executor()
+
+    def get_session_history(sid):
+        if sid not in session_store:
+            session_store[sid] = ChatMessageHistory()
+        return session_store[sid]
+
+
+    agent_with_history = RunnableWithMessageHistory(
+        agent_executor,
+        get_session_history,
+        input_messages_key='input',
+        history_messages_key='chat_history'
+    )
+
+    config = {
+        'configurable': {
+            'session_id': session_id,
+        },
+    }
+    
+    # result = agent_with_history.invoke({'input': input_text}, config=config)
+    result = await agent_with_history.ainvoke({'input': input_text}, config=config)
+
+    print(result)
+    
+# ✅ AI 응답 저장
+    if result.get("output"):
+        save_chat(user_id=user_id, sender='ai', message=result['output'])
+
+
+# ✅ 중간단계 결과 확인해서 Tool 사용여부 확인
+#     intermediate_steps = result.get('intermediate_steps', [])
+
+#     for step in intermediate_steps:
+#         action, tool_output = step
+#         # print(action.tool)  # "add_todo"
+#         # print(action.tool_input)  # {'title': '오늘 수학문제 10문제 풀기'}
+#         # print(tool_output)  # '{"action": "add_todo", "title": "오늘 수학문제 10문제 풀기"}'
+
+#         try:
+#             parsed = json.loads(tool_output)
+#             if isinstance(parsed, dict) and parsed.get("action") == "add_todo":
+#                 title = parsed.get("title")
+#                 add_todo(user_id=user_id, title=title)
+#                 return f"✅ '{title}' 할 일을 저장했어요!"
+#         except json.JSONDecodeError:
+#             continue  # 툴이 JSON 반환을 안 했으면 무시
+
+#     return result['output']
+
+
+    intermediate_steps = result.get('intermediate_steps', [])
+
+    for step in intermediate_steps:
+        action, tool_output = step
+        tool_name = action.tool
+
+        if tool_name == "add_todo":
+            try:
+                parsed = json.loads(tool_output)
+                if isinstance(parsed, dict):
+                    title = parsed.get("title")
+                    add_todo(user_id=user_id, title=title)
+                    return f"✅ '{title}' 할 일을 저장했어요!"
+            except json.JSONDecodeError:
+                continue  # 잘못된 JSON이면 무시
+
+        elif tool_name == "LifeScenarioProblemGenerator":
+            return tool_output  # 자연어 문제 문자열 그대로 반환
+
+    # 툴이 없거나 일반 대화라면
+    return result['output']
+
+
+
+
+
+
 
 
 

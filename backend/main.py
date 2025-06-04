@@ -18,6 +18,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from contextlib import asynccontextmanager
 
 from db import init_db
+from agent.chatbot_agent import initialize_session_store
 
 
 load_dotenv()
@@ -111,5 +112,8 @@ app.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
 # DB 초기화
 init_db()
 
+
+# Session Store 초기화
+initialize_session_store()
 
 # --reload는 코드가 두 번 실행됨
