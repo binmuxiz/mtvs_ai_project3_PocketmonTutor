@@ -14,8 +14,9 @@ def get_user_by_id(user_id: str):
 from models import UserCreate
 
 def create_user(data: UserCreate):
+    conn = get_connection()
+
     try :
-        conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO users (user_id, name)
