@@ -21,5 +21,5 @@ async def chatbot(request: ChatPrompt) -> str:
     user_input = request.text
     user_id = request.user_id
 
-    output = invoke_agent(user_input, session_id=user_id, user_id=user_id)
+    output = await invoke_agent(user_input, session_id=user_id, user_id=user_id)
     return output

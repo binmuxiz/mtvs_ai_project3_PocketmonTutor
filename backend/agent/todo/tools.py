@@ -1,9 +1,7 @@
-import sqlite3
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 from typing import Type
 
-from db import get_connection
 
 import json
 
@@ -17,8 +15,6 @@ class AddTodoTool(BaseTool):
     args_schema: Type[BaseModel] = AddTodoInput
 
     def _run(self, title) -> str:
-
-        print("AddTodoTool 사용 =================================================== ")
         # 판단만 하고 JSON 형태로 반환
         action_json =  json.dumps({
             "action": "add_todo",
@@ -28,37 +24,29 @@ class AddTodoTool(BaseTool):
         action_json = str(action_json)
         return action_json
     
-    async def _arun(self, user_id, title: str) -> str:
-        return self._run(user_id, title)
+    async def _arun(self, title: str) -> str:
+        return self._run(title)
     
 
 
+
+# ✅ View Todos
 class ViewTodoTool(BaseTool):
     name: str = "view_todos"
-    description: str = "현재 db에 저장된 할일 목록을 보여줍니다."
+    description: str = "현재 db에 저장된 할 일 목록을 보여줍니다."
 
     def _run(self) -> str:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT id, title, complete FROM todos")
-        rows = cur.fetchall()
-        conn.close()
-
-        if not rows:
-            return "📭 할 일이 없습니다."
-        
-        result = ""
-        for row in rows:
-            check = "✅" if row[2] else "☐"
-            result += f"{row[0]}. {check} {row[1]}\n"
-        return result.strip()
-    
+        return json.dumps({
+            "action": "view_todos"
+        })
 
     async def _arun(self) -> str:
         return self._run()
-    
 
 
+
+
+# ✅ Complete Todo
 class CompleteTodoInput(BaseModel):
     todo_id: int = Field(description="완료할 할 일의 ID")
 
@@ -68,23 +56,18 @@ class CompleteTodoTool(BaseTool):
     args_schema: Type[BaseModel] = CompleteTodoInput
 
     def _run(self, todo_id: int) -> str:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE todos SET complete = 1 WHERE id = ?", (todo_id,))
-        conn.commit()
-        affected = cur.rowcount
-        conn.close()
-
-        if affected:
-            return f"🎉 ID {todo_id}번 할 일을 완료했습니다!"
-        else:
-            return "❌ 해당 ID를 찾을 수 없습니다."
+        return json.dumps({
+            "action": "complete_todo",
+            "todo_id": todo_id
+        })
 
     async def _arun(self, todo_id: int) -> str:
         return self._run(todo_id)
 
 
 
+
+# ✅ Remove Todo
 class RemoveTodoInput(BaseModel):
     todo_id: int = Field(description="삭제할 할 일의 ID")
 
@@ -93,19 +76,11 @@ class RemoveTodoTool(BaseTool):
     description: str = "지정한 ID의 할 일을 삭제합니다."
     args_schema: Type[BaseModel] = RemoveTodoInput
 
-        
     def _run(self, todo_id: int) -> str:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM todos WHERE id = ?", (todo_id,))
-        conn.commit()
-        affected = cur.rowcount
-        conn.close()
-
-        if affected:
-            return f"🗑️ ID {todo_id}번 할 일을 삭제했습니다."
-        else:
-            return "❌ 해당 ID를 찾을 수 없습니다."
+        return json.dumps({
+            "action": "remove_todo",
+            "todo_id": todo_id
+        })
 
     async def _arun(self, todo_id: int) -> str:
         return self._run(todo_id)
