@@ -45,7 +45,7 @@ function PokemonForm({ user_id, onRecommend }) {
     }
     setIsLoading(true);
     try {
-      const response = await fetch(`${BASE_URL}/recommend/`, {
+      const response = await fetch(`${BASE_URL}/pokemon/recommend/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
