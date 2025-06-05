@@ -25,7 +25,7 @@ def init_db():
             no INTEGER,
             pokemon_type TEXT,
             description TEXT,
-            match_json TEXT,
+            match TEXT,
             image TEXT,
             model_file_path TEXT,
             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE

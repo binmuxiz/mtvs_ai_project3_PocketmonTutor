@@ -8,8 +8,8 @@ const path = require2("node:path");
 function createWindow() {
   const preloadPath = path.join(__dirname, "../preload/index.mjs");
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 800,
+    width: 1400,
+    height: 900,
     // resizable: True, // ✅ 창 크기 고정
     // fullscreenable: True,
     // maximizable: True,

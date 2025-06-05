@@ -4,19 +4,27 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from models import RecommendationRequest, PokemonRecommendation
+from models import PokemonRequest
+
+from pydantic import BaseModel
+from typing import List, Dict
+
+from models import PokemonRequest
 
 import json
 
 
-from pydantic import BaseModel
+
+class PokemonRecommendation(BaseModel):
+    name: str
+    no: str
+    pokemon_type: List[str]
+    description: str
+    match: Dict[str, str]
+    image: str
 
 
-# class RecommendationList(BaseModel):
-#     recommendations: List[PokemonRecommendation]
-
-
-async def generate_recommendation(data: RecommendationRequest, request: Request):
+async def generate_recommendation(data: PokemonRequest, request: Request):
 
        # 템플릿 프롬프트에 값 삽입
     prompt = f"""
@@ -133,14 +141,6 @@ async def generate_recommendation(data: RecommendationRequest, request: Request)
             recommeded = PokemonRecommendation(**parsed_data)
         except Exception as parse_err:
             raise ValueError(f'JSON 파싱 실패: {parse_err}')
-                    
-        # print(recommeded.name)
-        # print(recommeded.no)
-        # print(recommeded.pokemon_type)
-        # print(recommeded.description)
-        # print(recommeded.match['personality'])
-        # print(recommeded.match['type'])
-        # print(recommeded.image)
 
         return recommeded
 
