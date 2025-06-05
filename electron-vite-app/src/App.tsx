@@ -1,4 +1,3 @@
-import PokemonTabs from './components/PokemonTabs';
 import { useState } from "react";
 import RegisterPage from "./pages/RegisterPage";
 import MainLearningPage from "./pages/MainLearningPage";
@@ -8,7 +7,8 @@ import PokemonCard from "./components/PokemonCard";
 function App() {
   const [step, setStep] = useState<"register" | "form" | "recommend" | "main">("register");
   const [user_id, setUserId] = useState("");
-  const [recommendation, setRecommendation] = useState(null);
+  const [pokemonData, setPokemonData] = useState(null);
+  const [model_url, setModelUrl] = useState("");
 
   return (
     <>
@@ -18,6 +18,13 @@ function App() {
             setUserId(user_id);
             setStep("form");
           }}
+
+          onLogin={(pokemon) => {
+            setUserId(pokemon.user_id);
+            setPokemonData(pokemon);
+            setModelUrl(pokemon.model_file_path); // model_url도 세팅
+            setStep("main");
+          }}
         />
       )}
 
@@ -26,27 +33,39 @@ function App() {
 
             <PokemonForm
               user_id={user_id}
-              onRecommend={(result) => {
-                setRecommendation(result);
+              onRecommend={(pokemonData) => {
+                setPokemonData(pokemonData);
                 setStep("recommend");
               }}
             />
           </div>
       )}
 
-      {step === "recommend" && recommendation && (
+{/* 포켓몬 추천 결과 카드 */}
+      {step === "recommend" && pokemonData && (
         // <div className="p-6 max-w-4xl mx-auto">
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-400 to-orange-500">
 
           <PokemonCard
-            data={recommendation}
-            onConfirm={() => setStep("main")}
+            user_id={user_id}
+            pokemonData={pokemonData}
+
+            onConfirm={(model_url, ) => {
+              setModelUrl(model_url); 
+              setStep("main");
+            }}
+            
             onClose={() => setStep("form")}   // ← X 버튼 누르면 입력화면으로
           />
         </div>
       )}
 
-      {step === "main" && <MainLearningPage userId={user_id} />}
+      {step === "main" && 
+          <MainLearningPage 
+            user_id={user_id} 
+            model_url={model_url} 
+            pokemonData={pokemonData}
+      />}
     </>
   );
 }

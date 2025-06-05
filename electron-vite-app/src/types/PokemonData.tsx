@@ -12,3 +12,4 @@ export interface PokemonData {
   };
   image: string;
 }
+

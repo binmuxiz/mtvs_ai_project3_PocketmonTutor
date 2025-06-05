@@ -54,8 +54,14 @@ function FixedLight() {
 }
 
 // 포켓몬 모델
-function PokemonModel() {
-  const gltf = useLoader(GLTFLoader, "/pokemon-models/Untitled.glb");
+function PokemonModel({model_url}: {model_url: string}) {
+
+
+  const gltf = useLoader(GLTFLoader, model_url, loader => {
+    loader.manager.onError = () => {
+      console.error("GLB 로드 실패:", model_url);
+    };
+  });
   const modelRef = useRef<any>(null);
   const mixerRef = useRef<AnimationMixer | null>(null);
 
@@ -92,9 +98,9 @@ function PokemonModel() {
 
 }
 
-export default function MainLearningPage({ user_id }) {
-  const [exp, setExp] = useState(45);
-  const [level, setLevel] = useState(5);
+export default function MainLearningPage({ user_id, model_url, pokemonData }) {
+  const [exp, setExp] = useState(10);
+  const [level, setLevel] = useState(1);
   const maxExp = 100;
   const expPercent = (exp / maxExp) * 100;
 
@@ -106,7 +112,6 @@ export default function MainLearningPage({ user_id }) {
     message: string;
   }
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-
   
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -167,6 +172,14 @@ export default function MainLearningPage({ user_id }) {
             P
           </div>
           <div className="font-bold text-base whitespace-nowrap">Lv. {level}</div>
+
+          {pokemonData?.name && (
+          <div className="text-base font-semibold text-orange-500">
+            🎉 {pokemonData.name}와 함께 학습 중!
+          </div>
+        )}
+
+
           <div className="flex-1">
             <div className="relative">
               <div className="h-2 bg-gray-300 rounded-full overflow-hidden">
@@ -188,45 +201,51 @@ export default function MainLearningPage({ user_id }) {
         </div>
       </header>
 
-  
-      {/* 메인 영역 */}
-      {/* <main className="flex-1 flex p-6 overflow-hidden w-full"> */}
-      {/* <main className="flex-1 flex p-6 overflow-hidden h-[calc(100vh-8rem)]"> */}
-      <main className="flex w-full overflow-hidden">
 
-        {/* 왼쪽 - 3D 모델 영역 */}
-        <div className="w-3/5 flex flex-col items-center justify-center">
-        {/* <div className="w-3/5 h-[calc(100vh-200px)] flex flex-col items-center justify-center"> */}
-        {/* <div className="w-3/5 h-[calc(/100vh-200px)] bg-white rounded-2xl shadow flex flex-col items-center justify-center mt-8"> */}
-          <div className="text-xl font-bold mb-2">피카츄</div>
-          <div className="w-full h-[calc(100vh-200px)]">
-            <Canvas camera={{ position: [0, 1.5, 10], fov: 45 }}>
+      <main className="flex w-full overflow-hidden h-[calc(100vh-100px)]">
+      {/* 왼쪽 - 3D 모델 영역 */}
+      <div className="w-1/2 flex items-center justify-center bg-white">
+        <div className="w-full h-full">
+          {/* <Canvas camera={{ position: [0, 1.5, 10], fov: 45 }} > */}
+          <Canvas
+            shadows
+            camera={{ position: [0, 1.5, 8], fov: 45 }}
+            style={{ background: "linear-gradient(to top, #e0f7fa, #ffffff)" }}
+          >            
+            {/* 조명 */}
+            <ambientLight intensity={3.5} />
 
-
-              {/* <CameraLights /> */}
-
-              <FixedLight />
-              <ambientLight intensity={3.5} />
-              <directionalLight position={[1, 1, 1]} intensity={4.0} castShadow/>
-              <spotLight position={[0, 8, 10]} angle={0.4} penumbra={0.7} intensity={5.0} castShadow />
-              <ambientLight />
-              <directionalLight position={[5, 5, 5]} />
-
-              <PokemonModel/>
-
-              <OrbitControls enableZoom={false} />
-
-            </Canvas>
-          </div>
+            <directionalLight
+              castShadow
+              position={[1, 1, 1]}
+              intensity={3.2}
+              shadow-mapSize-width={2048}
+              shadow-mapSize-height={2048}
+              shadow-camera-far={50}
+              shadow-camera-left={-10}
+              shadow-camera-right={10}
+              shadow-camera-top={10}
+              shadow-camera-bottom={-10}
+              color="#fff6e5" // 약간 따뜻한 톤
+            />
+            <spotLight position={[0, 8, 10]} angle={0.4} penumbra={0.7} intensity={5.0} castShadow />
+            <PokemonModel model_url={model_url} />
+            <OrbitControls enableZoom={false} />
+          </Canvas>
         </div>
+      </div>
 
-
-
-        {/* 오른쪽 - 말풍선 영역 */}
-        <div className="w-2/5 p-4">
-          <div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-250px)] pr-2 scroll-smooth">
-            {chatHistory.map((chat, index) => (
-              <div key={index} className={`flex ${chat.sender === "user" ? "justify-end" : "justify-start"}`}>
+      {/* 오른쪽 - 채팅 + 입력창 영역 */}
+      <div className="w-1/2 flex flex-col bg-gradient-to-t from-white to-blue-50 px-4 py-4">
+        {/* 채팅창 */}
+        <div className="flex-1 overflow-y-auto pr-2">
+          {chatHistory.length === 0 ? (
+            <div className="text-center text-gray-500 mt-20 text-base">
+              {pokemonData?.name}에게 말을 걸어보세요!
+            </div>
+          ) : (
+            chatHistory.map((chat, index) => (
+              <div key={index} className={`flex ${chat.sender === "user" ? "justify-end" : "justify-start"} mb-3`}>
                 <div
                   className={`
                     relative px-4 py-3 rounded-2xl max-w-[70%] break-words text-sm leading-relaxed shadow-md
@@ -241,64 +260,164 @@ export default function MainLearningPage({ user_id }) {
                         : "bg-white border-l border-t border-gray-300 -top-2 left-4"}
                     `}
                   ></div>
-                  {chat.sender === "user" ? "🙋 " : "🤖 "} {chat.message}
+                  <div className="whitespace-pre-line">
+                    {chat.message}
+                  </div>
                 </div>
               </div>
-            ))}
+            ))
+          )}
           <div ref={chatEndRef} />
-          </div>
         </div>
 
-
-
-      </main>
-
-      {/* 하단 입력 영역 */}
-      <footer className="input-area p-4">
-        <div className="max-w-5xl mx-auto w-full">
+        {/* 입력창 */}
+        <div className="mt-4">
           <div className="flex items-center bg-gray-100 rounded-full p-1">
-            {/* 이미지 업로드 버튼 */}
-            <button className="p-2 rounded-full hover:bg-gray-200">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </button>
-            
-            {/* 파일 업로드 버튼 */}
-            <button className="p-2 rounded-full hover:bg-gray-200">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-            </button>
+            <input
+              id="message-input"
+              ref={inputRef}
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="예: 안녕 나는 은빈이야"
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              className="flex-1 bg-transparent border-none focus:outline-none px-4 py-2"
+            />
 
-            {/* 입력창*/}
-            <input 
-              id="message-input" 
-              ref={inputRef} 
-              type="text" 
-              value={userInput} 
-              onChange={(e) => setUserInput(e.target.value)} 
-              placeholder="메시지를 입력하세요..." 
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}  
-              className="flex-1 bg-transparent border-none focus:outline-none px-4 py-2" />
-            
-            {/* 음성 버튼 */}
-            <button className="p-2 rounded-full hover:bg-gray-200">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </button>
-            
             {/* 전송 버튼 */}
-            <button id="send-button" onClick={sendMessage} className="bg-blue-500 text-white rounded-full p-2 ml-1 hover:bg-blue-600">
+            <button
+              id="send-button"
+              onClick={sendMessage}
+              className="bg-blue-500 text-white rounded-full p-2 ml-1 hover:bg-blue-600"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </button>
-
           </div>
         </div>
-      </footer>
+      </div>
+
+      
+    </main>
+
     </div>
   );
 }
+
+
+
+
+      // {/* 메인 영역 */}
+      // {/* <main className="flex-1 flex p-6 overflow-hidden h-[calc(100vh-8rem)]"> */}
+      // <main className="flex w-full overflow-hidden">
+
+      //   {/* 왼쪽 - 3D 모델 영역 */}
+      //   <div className="w-3/5 flex flex-col items-center justify-center">
+      //   {/* <div className="w-3/5 h-[calc(100vh-200px)] flex flex-col items-center justify-center"> */}
+      //   {/* <div className="w-3/5 h-[calc(/100vh-200px)] bg-white rounded-2xl shadow flex flex-col items-center justify-center mt-8"> */}
+      //     {/* <div className="text-xl font-bold mb-2">{pokemonData.name}</div> */}
+      //     <div className="w-full h-[calc(100vh-200px)]">
+      //       <Canvas camera={{ position: [0, 1.5, 10], fov: 45 }}>
+
+
+      //         {/* <CameraLights /> */}
+
+      //         <FixedLight />
+      //         <ambientLight intensity={3.5} />
+      //         <directionalLight position={[1, 1, 1]} intensity={4.0} castShadow/>
+      //         <spotLight position={[0, 8, 10]} angle={0.4} penumbra={0.7} intensity={5.0} castShadow />
+      //         <ambientLight />
+      //         <directionalLight position={[5, 5, 5]} />
+
+      //         <PokemonModel model_url={model_url}/>
+
+      //         <OrbitControls enableZoom={false} />
+
+      //       </Canvas>
+      //     </div>
+      //   </div>
+
+
+
+      // {/* 오른쪽 - 말풍선 영역 */}
+      // <div className="w-2/5 p-4 bg-gradient-to-t from-white to-blue-50 rounded-xl shadow-inner flex flex-col">
+      //   <div className="flex-1 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-250px)] pr-2 scroll-smooth">
+      //     {chatHistory.length === 0 ? (
+      //       <div className="text-center text-gray-500 mt-20 text-base">
+      //         {pokemonData?.name}에게 말을 걸어보세요!
+      //       </div>
+      //     ) : (
+      //       chatHistory.map((chat, index) => (
+      //         <div key={index} className={`flex ${chat.sender === "user" ? "justify-end" : "justify-start"}`}>
+      //           <div
+      //             className={`
+      //               relative px-4 py-3 rounded-2xl max-w-[70%] break-words text-sm leading-relaxed shadow-md
+      //               ${chat.sender === "user" ? "bg-blue-500 text-white" : "bg-white border border-gray-300 text-gray-800"}
+      //             `}
+      //           >
+      //             <div
+      //               className={`
+      //                 absolute w-4 h-4 rotate-45
+      //                 ${chat.sender === "user"
+      //                   ? "bg-blue-500 -bottom-2 right-4"
+      //                   : "bg-white border-l border-t border-gray-300 -top-2 left-4"}
+      //               `}
+      //             ></div>
+      //             {chat.sender === "user" ? "🙋 " : "🤖 "} {chat.message}
+      //           </div>
+      //         </div>
+      //       ))
+      //     )}
+      //     <div ref={chatEndRef} />
+      //   </div>
+      // </div>
+
+      // </main>
+
+      // {/* 하단 입력 영역 */}
+      // <footer className="input-area p-4">
+      //   <div className="max-w-5xl mx-auto w-full">
+      //     <div className="flex items-center bg-gray-100 rounded-full p-1">
+      //       {/* 이미지 업로드 버튼 */}
+      //       <button className="p-2 rounded-full hover:bg-gray-200">
+      //         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      //           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      //         </svg>
+      //       </button>
+            
+      //       {/* 파일 업로드 버튼 */}
+      //       <button className="p-2 rounded-full hover:bg-gray-200">
+      //         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      //           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+      //         </svg>
+      //       </button>
+
+      //       {/* 입력창*/}
+      //       <input 
+      //         id="message-input" 
+      //         ref={inputRef} 
+      //         type="text" 
+      //         value={userInput} 
+      //         onChange={(e) => setUserInput(e.target.value)} 
+      //         placeholder="메시지를 입력하세요..." 
+      //         onKeyDown={(e) => e.key === "Enter" && sendMessage()}  
+      //         className="flex-1 bg-transparent border-none focus:outline-none px-4 py-2" />
+            
+      //       {/* 음성 버튼 */}
+      //       <button className="p-2 rounded-full hover:bg-gray-200">
+      //         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      //           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+      //         </svg>
+      //       </button>
+            
+      //       {/* 전송 버튼 */}
+      //       <button id="send-button" onClick={sendMessage} className="bg-blue-500 text-white rounded-full p-2 ml-1 hover:bg-blue-600">
+      //         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      //           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+      //         </svg>
+      //       </button>
+
+      //     </div>
+      //   </div>
+      // </footer>

@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { PokemonData } from '../types/PokemonData'; // 혹은 경로에 맞게
 
-interface Props {
-  data: PokemonData;
-  onConfirm: () => void;
-  onClose: () => void;
-}
+import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_SERVER_API_URL;
+
 
 const typeColors: Record<string, string> = {
   노말: "bg-gray-300 text-gray-900",
@@ -29,36 +28,76 @@ const typeColors: Record<string, string> = {
 };
 
 
-function PokemonCard({ data, onConfirm, onClose }: Props) {
+
+interface PokemonCardProps {
+  user_id: string;
+  pokemonData: PokemonData;
+  onConfirm: (modelUrl: string) => void;
+  onClose: () => void;
+}
+
+
+function PokemonCard({ user_id, pokemonData, onConfirm, onClose }: PokemonCardProps ) {
+
+  console.log(pokemonData)
+
+// 3d 모델 생성 API 요청
+  const handleConfirm = async () => {
+
+    try {
+      const response = await axios.post(`${BASE_URL}/pokemon/glb`, {
+        user_id: user_id,
+        name: pokemonData.name,
+        no: pokemonData.no,
+        pokemon_type: pokemonData.pokemon_type,
+        description: pokemonData.description,
+        match: pokemonData.match,
+        image: pokemonData.image,
+      });`1 `
+
+
+      const modelUrl = response.data.url;
+      console.log("model url => ",modelUrl);
+
+      onConfirm(modelUrl)
+
+
+    } catch(error) {
+      console.error("3D 모델 생성 요청 실패: ", error)
+      alert("3D 모델 생성 요청 중 오류가 발생했습니다.")
+    }
+  }
+
+
   return (
     <div className="card-container">
 
-            
       {/* ❌ X 버튼 */}
       <button
         onClick={onClose}
-        className="absolute top-2 right-2 text-xl text-gray-400 hover:text-black"
+        className="absolute -top-8
+         right-[-20px] text-2xl bg-white rounded-full px-3 py-1 shadow-md z-30 hover:bg-gray-100 transition"
       >
-        ×
+        ❌
       </button>
 
 
-      <div className="card max-w-xl mx-auto rounded-xl overflow-hidden shadow-lg bg-white transition-transform duration-500">
+        <div className="card max-w-xl mx-auto rounded-xl overflow-hidden shadow-lg bg-white transition-transform duration-500">
 
         {/* 카드 헤더: 이름 + 번호 */}
         <div className="flex justify-between items-center px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold text-lg rounded-t-xl">
-          <span>{data.name}</span>
-          <span>#{data.no}</span>
+          <span>{pokemonData.name}</span>
+          <span>#{pokemonData.no}</span>
         </div>
         {/* 이미지와 타입 배지 */}
         <div className="relative h-64 bg-gradient-to-b from-orange-200 to-amber-100">
           <img
-            src={data.image}
-            alt={data.name}
+            src={pokemonData.image}
+            alt={pokemonData.name}
             className="absolute inset-0 w-full h-full object-contain p-4"
           />
           <div className="absolute bottom-2 right-2 flex gap-2">
-            {data.pokemon_type.map((type, index) => (
+            {pokemonData.pokemon_type.map((type, index) => (
             <span
               key={index}
               className={`px-3 py-1 rounded-full text-sm font-bold ${typeColors[type] || "bg-gray-200 text-gray-800"}`}
@@ -72,14 +111,14 @@ function PokemonCard({ data, onConfirm, onClose }: Props) {
         {/* 설명 */}
         <div className="p-5">
           <div className="mb-4 bg-amber-50 p-3 rounded-lg shadow-inner">
-            <p className="text-gray-700 leading-relaxed">{data.description}</p>
+            <p className="text-gray-700 leading-relaxed">{pokemonData.description}</p>
           </div>
 
           {/* 매칭 정보 */}
           <div className="bg-amber-50 rounded-lg shadow-inner p-3">
             <h2 className="text-lg font-bold text-orange-800 mb-2">매칭 정보</h2>
             <div className="space-y-2">
-              {Object.entries(data.match).map(([key, value]) => (
+              {Object.entries(pokemonData.match).map(([key, value]) => (
                 <div key={key} className="flex items-center">
                   <span className="w-24 text-orange-700 font-medium">
                     {key === "personality"
@@ -115,14 +154,16 @@ function PokemonCard({ data, onConfirm, onClose }: Props) {
         {/* 버튼 */}
         <div className="bg-gradient-to-r from-orange-600 to-red-600 p-3 text-center">
           <button
-            onClick={onConfirm}
+            onClick={handleConfirm}
             className="text-white font-bold py-2 px-4 rounded hover:opacity-90"
           >
             이 포켓몬으로 할래요!
           </button>
         </div>
+        
       </div>
     </div>
+
   );
 }
 

@@ -3,7 +3,7 @@ import { useState } from 'react'
 const BASE_URL = import.meta.env.VITE_SERVER_API_URL
 
 
-function RegisterPage({ onRegister }) {
+function RegisterPage({ onRegister, onLogin }) {
 
   const [user_id, setUserId] = useState("");
   const [name, setName] = useState("");
@@ -44,13 +44,59 @@ function RegisterPage({ onRegister }) {
     }
   };
 
+
+   const handleLogin = async () => {
+    if (!user_id) return alert("ID를 입력해주세요.");
+
+    const userData = {
+      user_id,
+    }
+
+
+    try {
+      // 사용자 등록 요청
+      const response = await fetch(`${BASE_URL}/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      })
+
+      if (!response.ok) {
+        throw new Error("❌ 등록되지 않은 사용자입니다.")
+      }
+
+
+      const data = await response.json(); // 응답 JSON 파싱
+      const pokemon = data.pokemon;
+
+      onLogin(pokemon); // 포켓몬 데이터 전달
+      
+    } catch(err) {
+      console.error("❌ 에러 발생:", err);
+      alert("서버 통신 중 문제가 발생했어요.");
+    }
+  };
+
   return (
     <div className="p-8 max-w-sm mx-auto">
-      <h1 className="text-xl font-bold mb-4">사용자 등록</h1>
       <input placeholder="사용자 ID" value={user_id} onChange={(e) => setUserId(e.target.value)} className="mb-2 w-full border p-2" />
       <input placeholder="이름" value={name} onChange={(e) => setName(e.target.value)} className="mb-4 w-full border p-2" />
 
-      <button onClick={handleRegister} className="bg-blue-600 text-white px-4 py-2 rounded">가입하기</button>
+
+      <div className="flex space-x-4">
+        <button
+          onClick={handleRegister}
+          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+        >
+          가입하기
+        </button>
+        <button
+          onClick={handleLogin}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          로그인
+        </button>
+      </div>
     </div>
   );
 }

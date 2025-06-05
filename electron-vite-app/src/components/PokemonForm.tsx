@@ -58,11 +58,13 @@ function PokemonForm({ user_id, onRecommend }) {
         })
       });
       const recResult = await response.json();
+
       if (!response.ok) {
         alert("❌ 추천 요청이 실패하였습니다.");
         throw new Error(recResult.detail || "❌ 추천 실패");
       }
       onRecommend(recResult.recommendations);
+      
     } catch (err) {
       console.error("❌ 에러 발생:", err);
       alert("서버 통신 중 문제가 발생했어요.");
