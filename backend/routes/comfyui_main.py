@@ -11,13 +11,34 @@ from urllib import parse as urllib_parse
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+
 from PIL import Image
 import subprocess  # 🔧 A: subprocess 추가
 
+# CORS 정책을 완화
+#==============================================================
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 또는 ["http://localhost:3000"] 등 프론트 도메인
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+#==============================================================
+
+
+app = FastAPI()
+app.mount("/output", StaticFiles(directory="C:/ONLY_COMFY/ComfyUI/output"), name="output")
+
 # ComfyUI 서버 주소 및 고유 클라이언트 ID
-server_address = "127.0.0.1:8188"
+server_address = "192.168.0.89:8188"
+# fastpi 서버
+server_address2 = "192.168.0.89:8000"
 client_id = str(uuid.uuid4())
 
 # --- 유틸리티 함수 정의 ---
@@ -181,7 +202,7 @@ async def generate_glb(request: PromptRequest):
         print(f"🎉 최종 애니메이션 GLB 파일: {final_filename}")
 
         # Comfy 서버에서 정적 파일을 서비스한다고 가정
-        glb_url = f"http://{server_address}/output/3D/{final_filename}"
+        glb_url = f"http://{server_address2}/output/3D/{final_filename}"
 
         return JSONResponse(content={
             "status": "success",
@@ -193,3 +214,18 @@ async def generate_glb(request: PromptRequest):
             "status": "fail",
             "message": "GLB 파일이 생성되지 않았습니다."
         }, status_code=500)
+    
+#==============================================================
+
+@app.get("/get-glb/{filename}")
+async def serve_glb_file(filename: str):
+    glb_path = os.path.join(r"C:\ONLY_COMFY\ComfyUI\output\3D", filename)
+    if not os.path.exists(glb_path):
+        return JSONResponse(status_code=404, content={"status": "fail", "message": "파일이 존재하지 않습니다."})
+    
+    return FileResponse(
+        glb_path,
+        media_type="model/gltf-binary",
+        headers={"Access-Control-Allow-Origin": "*"}  # ✅ GLTFLoader를 위한 CORS 허용
+    )
+#==============================================================
