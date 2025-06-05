@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict
 
+class UserLogin(BaseModel):
+    user_id: str
 
 class UserCreate(BaseModel):
     user_id: str = Field(..., description="id")
@@ -15,6 +17,7 @@ class PokemonRequest(BaseModel):
     type: str = Field(..., description="선호하는 타입(속성)")
 
 
+# 3d 모델 생성 요청
 class PokemonModelRequest(BaseModel):
     user_id: str
     name: str

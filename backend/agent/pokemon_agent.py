@@ -4,12 +4,27 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from models import RecommendationRequest, PokemonRecommendation
+from models import PokemonRequest
+
+from pydantic import BaseModel
+from typing import List, Dict
+
+from models import PokemonRequest
 
 import json
 
 
-async def generate_recommendation(data: RecommendationRequest, request: Request):
+
+class PokemonRecommendation(BaseModel):
+    name: str
+    no: str
+    pokemon_type: List[str]
+    description: str
+    match: Dict[str, str]
+    image: str
+
+
+async def generate_recommendation(data: PokemonRequest, request: Request):
 
        # 템플릿 프롬프트에 값 삽입
     prompt = f"""

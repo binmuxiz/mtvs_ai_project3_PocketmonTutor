@@ -58,18 +58,9 @@ async def recommend_pokemon(data: PokemonRequest, request: Request):
             logger.error("에이전트 실행 중 예외 발생: %s", e)
             raise HTTPException(status_code=500, detail=f"추천 실패: {e}")
 
-#     try:
-# # DB에 저장
-#         logger.info("DB 저장 대상 포켓몬: name=%s, no=%s", result.name, result.no)
-#         create_pokemon(user_id, result)
-
-#     except Exception as e:
-#         logger.error("DB 저장 중 오류 발생: %s", e)
-#         raise
 
     return { "message": "포켓몬 추천 결과 저장 완료!",  "recommendations": result}    
     
-
 
 import httpx
 from fastapi import APIRouter
@@ -80,28 +71,41 @@ from models import PokemonModelRequest
 from db import create_pokemon
 from models import Pokemon
 
+from urllib.parse import urlparse
+
+import os
+
 # --- GLB 생성 및 반환 API ---
 @router.post("/glb")
 async def generate_glb(request: PokemonModelRequest):
 
+    print("-------------------glb --------------------------")
+    print(request)
 # glb 파일 요청
     server_address = "192.168.0.89:8000"
     target_url = f"http://{server_address}/generate-glb"
 
+# 3d 모델 생성 요청
+    prompt = request.image
     try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            response = await client.post(target_url, json={"prompt": request.prompt})
+        async with httpx.AsyncClient(timeout=1000.0) as client:
+            response = await client.post(target_url, json={"prompt": prompt})
 
         if response.status_code != 200:
             raise HTTPException(status_code=500, detail=f"GLB 생성 실패: {response.text}")
     
         resp_json = response.json()
+        print("resp_json => ", resp_json)
 
         model_url = resp_json.get('url')
         
         if not model_url:
             raise HTTPException(status_code=500, detail="응답에 url이 없습니다.")
         
+        filename = os.path.basename(urlparse(model_url).path)  # "Hy3D_textured_00035__animated.glb"
+        fastapi_model_url = f"http://{server_address}/get-glb/{filename}"  # FastAPI 서버 주소로 바꿔줘
+
+            
 # db에 저장하기 위한 구조체 
         pokemon = Pokemon(
             user_id=request.user_id,
@@ -111,8 +115,9 @@ async def generate_glb(request: PokemonModelRequest):
             description=request.description,
             match=request.match,
             image=request.image,
-            model_file_path=model_url
+            model_file_path=fastapi_model_url
         )
+
 
 # db에 저장
         try:
@@ -125,7 +130,10 @@ async def generate_glb(request: PokemonModelRequest):
 # 원격 서버의 응답을 그대로 리턴
         return JSONResponse(
             status_code=response.status_code,
-            content=resp_json
+            content={
+                "status": "success",
+                "url": fastapi_model_url  # ← 클라이언트는 이 URL로 GLB 요청하게 됨
+            }
         )
 # {
 #   "status": "success",
@@ -140,4 +148,7 @@ async def generate_glb(request: PokemonModelRequest):
                 "message": f"서버 요청 실패:  {repr(e)}"
             }
         )
+
+
+
 

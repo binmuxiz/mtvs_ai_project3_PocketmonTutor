@@ -43,7 +43,7 @@ async def generate_eng_problem(scenario: str) -> str:
             - 정답과 해설을 반드시 포함할 것. 해설은 50단어 이내로 간결하게 작성해줘.
 
             다음 형식을 따라줘:
-            문제: ...
+            문제: ...  
             보기:
             A) ...
             B) ...
@@ -89,34 +89,39 @@ def get_agent_executor():
     tools_for_agent = todo_tools + [eng_problem_tool]
 
     prompt = ChatPromptTemplate.from_messages([
-        ('system', """
-        너는 사용자의 다양한 요청을 처리하는 AI 어시스턴트야.
-                
-        너의 역할은 다음과 같아:
-                
-        1. 사용자의 할 일 관리 요청이 오면, 툴을 사용해서 처리해. (add/view/complete/remove)
-        2. 영어 문제 생성을 요청받으면, 반드시 "EngProblemTool" 툴을 사용해 문제를 생성해.
-        3. 그 외 일상 대화는 자연스럽게 응답해.
-        
-         **중요**:
-         - 툴을 사용할 땐 JSON으로 명확하게 결과를 반환해야 해. 예: 
-         {{"action": "add_todo", "title": "수학 10문제 풀기"}}
-         {{"action": "EngProblemTool", "title": "친구와 길을 잃은 상황"}}
-         - 툴 사용이 아닌 경우엔 자연스럽게 텍스트로 응답하면 돼.
-         - 사용자가 명확히 툴과 관련된 요청을 하지 않으면, 툴을 실행하지 마.
+    ('system', """
+        너는 사용자의 다양한 요청을 처리하는 AI 어시스턴트야. 다음 세 가지 역할을 수행해:
 
-         예시:
-        - "오늘 뭐할까?" → 자연어 응답
-        - "할 일 목록 보여줘" → {{"action": "view_todos"}}
-        - "오늘 할거 때려치고 노래방이나 갈끼" → {{"action": "view_todos"}}
-            - 이런 경우엔 오늘의 할일 목록을 확인하고 적절한 대답 생성. 예: "오늘 아래와 같은 할일들이 존재해요. 노래방은 할일을 다 하고 갑시다!"
-         
+        1️⃣ **할 일 관리 요청**이 오면 아래 툴을 사용해서 처리해:
+        - `add_todo`: "할일 추가해줘", "오늘 이거 할게", "내일 이거 할 예정이야" → 새로운 할 일을 추가할 때
+        - `view_todos`: "오늘 할일 뭐야?", "일정 보여줘", "내일 일정 알려줘" → 할 일 목록을 보여줄 때
+        - `complete_todo`: "이거 다 했어", "완료했어", "끝냈어", "체크해줘" → 사용자가 특정 할 일을 끝냈을 때 
+        - `remove_todo`: "이 할일 삭제해줘", "지워줘", "이 일정 필요 없어" → 특정 할 일을 삭제해달라고 할 때
+     
+        - "놀고 싶어", "오늘 할 거 귀찮아"와 같은 문장은 먼저 view_todos 툴을 사용해 오늘 할 일을 확인하고,
+            그 결과에 따라 적절히 응답해야 해. 
+
+        → 예시:
+        {{"action": "add_todo", "title": "수학 문제 풀기"}}
+        {{"action": "complete_todo", "title": "운동하기"}}
+        {{"action": "view_todos"}}
+
+        ⚠️ `complete_todo` 요청에서 `view_todos`로 fallback하지 마. 명확히 완료 요청이면 `complete_todo` 툴을 사용해.
+
+        2️⃣ **영어 문제 생성 요청**이 오면 반드시 `EngProblemTool` 툴을 사용해.  
+        → 주어진 시나리오를 바탕으로 고등학교 영어 내신 문제를 출제해야 해.
+
+        → 예시:
+        {{"action": "EngProblemTool", "title": "친구와 길을 잃은 상황"}}
+
+        3️⃣ 그 외에는 **자연스럽게 일상 대화를 이어가면 돼**. 툴과 관련 없는 경우에는 툴을 실행하지 마.
 
         """),
-        ('placeholder', '{chat_history}'),
-        ('user', '{input}'),
-        ('placeholder', '{agent_scratchpad}')
+            ('placeholder', '{chat_history}'),
+            ('user', '{input}'),
+            ('placeholder', '{agent_scratchpad}')
     ])
+
 
     agent = create_tool_calling_agent(llm, tools_for_agent, prompt)
     executor = AgentExecutor(
@@ -199,10 +204,11 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
 
         if tool_name == "EngProblemTool":
             print("----------------------- EngProblemTool ------------------------------")
-            return tool_output 
+            return output_message 
 
         try:
             parsed = json.loads(tool_output)
+
         except json.JSONDecodeError:
             continue  # 잘못된 JSON이면 무시
 
@@ -211,24 +217,24 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
             title = parsed.get("title")
             if title:
                 add_todo(user_id=user_id, title=title)
-                return output_message
+                todo_output = view_todos(user_id=user_id)
+                return f"{output_message}\n📌할일 목록:\n{todo_output}"
 
         elif tool_name == "view_todos":
             print("----------------------- view todos ------------------------------")
-            return view_todos(user_id=user_id)
+            return f"{output_message}\n📌할일 목록:\n{view_todos(user_id=user_id)}"
 
         elif tool_name == "complete_todo":
             print("----------------------- complete todo ------------------------------")
             title = parsed.get("title")
-            todo_id = parsed.get("todo_id")
-            print("1. todo id => ",{todo_id})
 
             todo_id = await get_todo_id(user_id=user_id, title=title)
-            print("2. todo id => ",{todo_id})
+            print("todo id => ",{todo_id})
 
             if todo_id:
                 complete_todo(user_id=user_id, todo_id=todo_id)
-                return f"🎉 {output_message}"
+                todo_output = view_todos(user_id=user_id)
+                return f"🎉 {output_message}\n📌할일 목록:\n{todo_output}"
             else:
                 return "❌ 해당 할 일을 찾을 수 없어요."
             
@@ -236,15 +242,13 @@ async def invoke_agent(input_text: str, session_id: str, user_id: str):
         elif tool_name == "remove_todo":
             print("----------------------- remove todo ------------------------------")
             title = parsed.get("title")
-            todo_id = parsed.get("todo_id")
-            print("1. todo id => ",{todo_id})
-
             todo_id = await get_todo_id(user_id=user_id, title=title)
-            print("2. todo id => ",{todo_id})
+            print("todo id => ",{todo_id})
 
             if todo_id:
                 remove_todo(user_id=user_id, todo_id=todo_id)
-                return f"🗑️ {output_message}"
+                todo_output = view_todos(user_id=user_id)
+                return f"🗑️ {output_message}\n📌할일 목록:\n{todo_output}"
             else:
                 return "❌ 해당 할 일을 찾을 수 없어요."
     
